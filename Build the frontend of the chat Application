@@ -1,0 +1,99 @@
+const express = require('express');
+const mongoose = require('mongoose');
+const TaskSchema = require('./model');
+const cors = require('cors');
+
+const app = express();
+
+mongoose.connect('mongodb+srv://<username>:<password>@cluster0.iuu8d.mongodb.net/myFirstDatabase?retryWrites=true&w=majority',
+{
+    useNewUrlParser: true,
+    useUnifiedTopology: true
+}).then(
+    ()=>console.log('DB Connected')
+)
+
+app.use(express.json())
+
+app.use(cors({
+    origin: '*'
+}))
+
+app.post('/addtask',async(req,res)=>{
+    const {todo} = req.body;
+    try{
+        const newData = new TaskSchema({
+            todo : todo
+        });
+        await newData.save();
+        return res.json(await TaskSchema.find())
+    }
+    catch(err){
+        console.log(err)
+    }
+})
+
+app.get('/gettask',async(req,res) => {
+    try{
+        return res.json(await TaskSchema.find()) ;
+    }
+    catch(err){
+        console.log(err)
+    }
+})
+
+app.delete('/delete/:id',async(req,res) => {
+    try{
+        await TaskSchema.findByIdAndDelete(req.params.id);
+        return res.json(await TaskSchema.find())
+    }
+    catch(err){
+        console.log(err)
+    }
+})
+
+app.listen(5000,()=> console.log('Server running...'));
+
+const mongoose = require('mongoose');
+
+const TaskSchema = new mongoose.Schema({
+    todo : {
+       type : String,
+       required : true 
+    },
+    date : {
+        type : Date,
+        default : Date.now
+    }
+})
+
+module.exports = mongoose.model('TaskSchema',TaskSchema);
+
+
+
+{
+  "name": "mernstack",
+  "version": "1.0.0",
+  "description": "testing application",
+  "main": "server.js",
+  "scripts": {
+    "start" : "node server",
+    "server" : "nodemon server",
+    "client" : "npm start --prefix client",
+    "dev" : "concurrently \"npm run server\" \"npm run client\" "
+  },
+  "author": "Telugu skillhub",
+  "license": "ISC",
+  "dependencies": {
+    "cors": "^2.8.5",
+    "express": "^4.17.1",
+    "mongoose": "^5.12.13"
+  },
+  "devDependencies": {
+    "concurrently": "^6.2.0",
+    "nodemon": "^2.0.7"
+  }
+}
+
+
+
