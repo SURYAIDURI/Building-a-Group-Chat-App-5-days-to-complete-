@@ -1,0 +1,115 @@
+const express = require('express')
+const app = express()
+const { ROLE, users } = require('./data')
+const { authUser, authRole } = require('./basicAuth')
+const projectRouter = require('./routes/projects')
+
+app.use(express.json())
+app.use(setUser)
+app.use('/projects', projectRouter)
+
+app.get('/', (req, res) => {
+  res.send('Home Page')
+})
+
+app.get('/dashboard', authUser, (req, res) => {
+  res.send('Dashboard Page')
+})
+
+app.get('/admin', authUser, authRole(ROLE.ADMIN), (req, res) => {
+  res.send('Admin Page')
+})
+
+function setUser(req, res, next) {
+  const userId = req.body.userId
+  if (userId) {
+    req.user = users.find(user => user.id === userId)
+  }
+  next()
+}
+
+app.listen(3000)
+
+
+@@ -0,0 +1,23 @@
+const { ROLE } = require('../data')
+
+function canViewProject(user, project) {
+  return (
+    user.role === ROLE.ADMIN ||
+    project.userId === user.id
+  )
+}
+
+function scopedProjects(user, projects) {
+  if (user.role === ROLE.ADMIN) return projects
+  return projects.filter(project => project.userId === user.id)
+}
+
+function canDeleteProject(user, project) {
+  return project.userId === user.id
+}
+
+module.exports = {
+  canViewProject,
+  scopedProjects,
+  canDeleteProject
+}
+
+const express = require('express')
+const router = express.Router()
+const { projects } = require('../data')
+const { authUser } = require('../basicAuth')
+const { canViewProject, canDeleteProject, scopedProjects } = require('../permissions/project')
+
+router.get('/', authUser, (req, res) => {
+  res.json(scopedProjects(req.user, projects))
+})
+
+router.get('/:projectId', setProject, authUser, authGetProject, (req, res) => {
+  res.json(req.project)
+})
+
+router.delete('/:projectId', setProject, authUser, authDeleteProject, (req, res) => {
+  res.send('Deleted Project')
+})
+
+function setProject(req, res, next) {
+  const projectId = parseInt(req.params.projectId)
+  req.project = projects.find(project => project.id === projectId)
+
+  if (req.project == null) {
+    res.status(404)
+    return res.send('Project not found')
+  }
+  next()
+}
+
+function authGetProject(req, res, next) {
+  if (!canViewProject(req.user, req.project)) {
+    res.status(401)
+    return res.send('Not Allowed')
+  }
+
+  next()
+}
+
+function authDeleteProject(req, res, next) {
+  if (!canDeleteProject(req.user, req.project)) {
+    res.status(401)
+    return res.send('Not Allowed')
+  }
+
+  next()
+}
+
+module.exports = router
+
+
+DELETE http://localhost:3000/projects/1
+Content-Type: application/json
+
+{
+  "userId": 1
+}
+
